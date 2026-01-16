@@ -113,6 +113,42 @@
       font-weight:700;
     }
 
+    /* Success feedback */
+    .success {
+      display:none;
+      align-items:center;
+      gap:10px;
+      color: var(--success);
+      background: rgba(45,179,106,0.06);
+      border: 1px solid rgba(45,179,106,0.12);
+      padding:10px 12px;
+      border-radius:10px;
+      margin-top:10px;
+      font-weight:800;
+      box-shadow: 0 8px 22px rgba(45,179,106,0.06);
+    }
+    .success .icon {
+      width:28px;
+      height:28px;
+      border-radius:8px;
+      background: linear-gradient(180deg, rgba(45,179,106,0.18), rgba(45,179,106,0.08));
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      color:var(--success);
+      font-size:14px;
+      flex:0 0 28px;
+    }
+    /* pop animation */
+    .pop {
+      animation: pop .42s cubic-bezier(.2,.9,.3,1);
+    }
+    @keyframes pop {
+      0% { transform: scale(.88); opacity: 0; }
+      60% { transform: scale(1.03); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+
     .actions { margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
     button {
       padding:10px 14px;
@@ -154,6 +190,12 @@
     /* Footer matrix */
     pre { background: rgba(255,255,255,0.02); padding:14px; border-radius:10px; color:#dbe9ff; overflow:auto; border:1px solid rgba(255,255,255,0.02); }
 
+    /* Input success highlight */
+    .input-success {
+      border-color: rgba(45,179,106,0.9) !important;
+      box-shadow: 0 8px 30px rgba(45,179,106,0.08);
+    }
+
     /* Responsive */
     @media (max-width:980px){
       .grid { grid-template-columns: 1fr; }
@@ -190,7 +232,13 @@
           <input id="amount" name="amount" placeholder="Enter amount (e.g. 100.00)" aria-label="amount" />
 
           <div id="limits" class="muted" aria-live="polite" style="margin-top:8px">—</div>
+
+          <!-- validation feedback areas -->
           <div id="amountError" class="error" role="alert" style="display:none"></div>
+          <div id="amountSuccess" class="success" role="status" aria-live="polite">
+            <div class="icon">✓</div>
+            <div id="successText">Amount looks good — ready to proceed 🎉</div>
+          </div>
 
           <label for="wallet">Destination wallet / address</label>
           <input id="wallet" name="wallet" placeholder="e.g. 0x... or TRON address" />
@@ -300,11 +348,15 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
     const walletEl = document.getElementById('wallet');
     const limitsEl = document.getElementById('limits');
     const amountErrorEl = document.getElementById('amountError');
+    const amountSuccessEl = document.getElementById('amountSuccess');
+    const successTextEl = document.getElementById('successText');
     const validateBtn = document.getElementById('validateBtn');
     const autoFillNominal = document.getElementById('autoFillNominal');
     const casesTableBody = document.querySelector('#casesTable tbody');
     const runAllBtn = document.getElementById('runAll');
     const clearResultsBtn = document.getElementById('clearResults');
+
+    let successTimeout = null;
 
     function updateLimitsDisplay() {
       const c = currencyEl.value;
@@ -345,12 +397,49 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
     }
 
     function showAmountError(message) {
-      amountErrorEl.style.display = 'block';
+      // Hide success first
+      hideSuccessImmediately();
+      amountErrorEl.style.display = 'inline-block';
       amountErrorEl.textContent = message;
+      amountEl.classList.remove('input-success');
     }
-    function clearAmountError() {
+
+    function showSuccess(message) {
+      // Hide error
       amountErrorEl.style.display = 'none';
       amountErrorEl.textContent = '';
+      // Update success text, show, animate, and highlight input
+      successTextEl.textContent = message || 'Amount looks good — ready to proceed 🎉';
+      amountSuccessEl.style.display = 'flex';
+      // trigger pop animation
+      amountSuccessEl.classList.remove('pop');
+      // force reflow to restart animation
+      void amountSuccessEl.offsetWidth;
+      amountSuccessEl.classList.add('pop');
+      amountEl.classList.add('input-success');
+
+      // Clear any previous timeout
+      if (successTimeout) clearTimeout(successTimeout);
+      successTimeout = setTimeout(() => {
+        hideSuccess();
+      }, 2700);
+    }
+
+    function hideSuccess() {
+      amountSuccessEl.classList.remove('pop');
+      amountSuccessEl.style.display = 'none';
+      amountEl.classList.remove('input-success');
+      successTimeout = null;
+    }
+
+    function hideSuccessImmediately() {
+      if (successTimeout) {
+        clearTimeout(successTimeout);
+        successTimeout = null;
+      }
+      amountSuccessEl.style.display = 'none';
+      amountSuccessEl.classList.remove('pop');
+      amountEl.classList.remove('input-success');
     }
 
     function validateAndShow(raw) {
@@ -360,7 +449,8 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
         showAmountError('Amount invalid: ' + (res.detail || res.reason));
         return { pass: false, details: res };
       }
-      clearAmountError();
+      // success
+      showSuccess('Amount valid ✅');
       return { pass: true, details: res };
     }
 
@@ -413,7 +503,8 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
     currencyEl.addEventListener('change', () => {
       updateLimitsDisplay();
       populateCases();
-      clearAmountError();
+      hideSuccessImmediately();
+      amountErrorEl.style.display = 'none';
     });
 
     validateBtn.addEventListener('click', () => {
@@ -423,7 +514,8 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
     autoFillNominal.addEventListener('click', () => {
       amountEl.value = '100.00';
       walletEl.value = '';
-      clearAmountError();
+      hideSuccessImmediately();
+      amountErrorEl.style.display = 'none';
     });
 
     runAllBtn.addEventListener('click', () => {
@@ -435,7 +527,8 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
         td.textContent = '-';
         td.className = '';
       });
-      clearAmountError();
+      hideSuccessImmediately();
+      amountErrorEl.style.display = 'none';
     });
 
     // Initialize UI
@@ -454,7 +547,9 @@ Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), ext
     window._exercise = {
       rules: currencyRules,
       generateCasesFor,
-      validateAmountForCurrency
+      validateAmountForCurrency,
+      _showSuccess: showSuccess,
+      _hideSuccess: hideSuccessImmediately
     };
   </script>
 </body>
