@@ -1,0 +1,461 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Boundary Value Analysis — USDT Cashier Deposit — Junior QA Exercise</title>
+
+  <style>
+    /* Page background and layout */
+    :root{
+      --bg1: #0f1724;
+      --bg2: #0b2545;
+      --card: rgba(255,255,255,0.04);
+      --glass: rgba(255,255,255,0.06);
+      --muted: #9aa7c0;
+      --accent: #00a3ff;
+      --accent-2: #7b61ff;
+      --success: #2db36a;
+      --danger: #ff5864;
+      --glass-border: rgba(255,255,255,0.06);
+    }
+
+    html,body{
+      height:100%;
+      margin:0;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      color:#e6eef8;
+      background: linear-gradient(180deg,var(--bg1) 0%, var(--bg2) 100%);
+      -webkit-font-smoothing:antialiased;
+      -moz-osx-font-smoothing:grayscale;
+    }
+
+    .wrap {
+      max-width:1100px;
+      margin:36px auto;
+      padding:20px;
+    }
+
+    header {
+      display:flex;
+      gap:16px;
+      align-items:center;
+      margin-bottom:18px;
+    }
+    .logo {
+      width:54px;
+      height:54px;
+      border-radius:12px;
+      background: linear-gradient(135deg,var(--accent),var(--accent-2));
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      box-shadow: 0 6px 18px rgba(11,37,69,0.45), inset 0 -6px 20px rgba(255,255,255,0.06);
+      flex:0 0 54px;
+      font-weight:700;
+      color:white;
+      font-size:18px;
+    }
+    h1 {
+      margin:0;
+      font-size:20px;
+      line-height:1.05;
+    }
+    .subtitle { color:var(--muted); font-size:13px; margin-top:6px; }
+
+    /* Grid layout */
+    .grid {
+      display:grid;
+      grid-template-columns: 1fr 420px;
+      gap:20px;
+      align-items:start;
+    }
+
+    /* Card styles */
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      border:1px solid var(--glass-border);
+      border-radius:12px;
+      padding:18px;
+      box-shadow: 0 10px 30px rgba(2,6,23,0.6);
+      backdrop-filter: blur(6px);
+    }
+
+    label { display:block; margin-top:10px; color:#dbe9ff; font-weight:600; font-size:13px; }
+    input[type="text"], input[type="number"], select {
+      width:100%;
+      padding:12px 12px;
+      margin-top:8px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.06);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+      color: #eaf6ff;
+      font-size:14px;
+      outline: none;
+      transition: box-shadow .18s ease, transform .08s ease, border-color .14s ease;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset;
+    }
+    input:focus, select:focus {
+      border-color: rgba(0,163,255,0.8);
+      box-shadow: 0 6px 22px rgba(0,163,255,0.08);
+      transform: translateY(-1px);
+    }
+
+    .muted { color: var(--muted); font-size:13px; }
+
+    .error {
+      color: var(--danger);
+      background: rgba(255,88,100,0.06);
+      padding:8px 10px;
+      border-radius:8px;
+      margin-top:10px;
+      display:inline-block;
+      font-weight:700;
+    }
+
+    .actions { margin-top:14px; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+    button {
+      padding:10px 14px;
+      border-radius:10px;
+      border: none;
+      cursor:pointer;
+      font-weight:600;
+      color:white;
+      background: linear-gradient(90deg,var(--accent),var(--accent-2));
+      box-shadow: 0 8px 20px rgba(123,97,255,0.12);
+      transition: transform .08s ease, box-shadow .12s ease, opacity .12s ease;
+    }
+    button:hover { transform: translateY(-3px); }
+    button.secondary {
+      background: transparent;
+      color: var(--accent);
+      border:1px solid rgba(123,97,255,0.18);
+      box-shadow:none;
+    }
+    button.ghost {
+      background: transparent;
+      color: var(--muted);
+      border:1px dashed rgba(255,255,255,0.04);
+    }
+
+    /* Aside/testcases */
+    table { width:100%; border-collapse:collapse; margin-top:12px; font-size:13px; color:#dbe9ff; }
+    th, td { text-align:left; padding:10px; border-bottom:1px solid rgba(255,255,255,0.03); vertical-align:middle; }
+    thead th { color:var(--muted); font-weight:700; background:transparent; font-size:12px; }
+    tbody tr:hover { background: linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); }
+
+    code { background: rgba(255,255,255,0.03); padding:4px 7px; border-radius:6px; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", monospace; font-size:13px; color:#eaf6ff; }
+
+    .result-pass { color: var(--success); font-weight:800; }
+    .result-fail { color: var(--danger); font-weight:800; }
+
+    .note { background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:12px; border-radius:10px; margin-top:12px; color:var(--muted); border:1px solid rgba(255,255,255,0.02); }
+
+    /* Footer matrix */
+    pre { background: rgba(255,255,255,0.02); padding:14px; border-radius:10px; color:#dbe9ff; overflow:auto; border:1px solid rgba(255,255,255,0.02); }
+
+    /* Responsive */
+    @media (max-width:980px){
+      .grid { grid-template-columns: 1fr; }
+      .logo { width:48px; height:48px; font-size:16px; }
+      .wrap { padding:12px; }
+    }
+
+    /* small helper */
+    .kicker { display:inline-block; font-size:12px; padding:6px 8px; border-radius:8px; color: #fff; background: rgba(0,163,255,0.12); border:1px solid rgba(0,163,255,0.08); margin-right:8px; }
+    .highlight { color: #cfefff; font-weight:700; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div class="logo">USDT</div>
+      <div>
+        <h1>Boundary Value Analysis — USDT Cashier Deposit</h1>
+        <div class="subtitle">Interactive junior QA exercise: test inclusive/exclusive boundaries, precision and invalid formats.</div>
+      </div>
+    </header>
+
+    <div class="grid">
+      <section class="card" aria-labelledby="form-heading">
+        <h2 id="form-heading" style="margin:0 0 8px 0;">Deposit form (interactive)</h2>
+
+        <form id="depositForm" novalidate>
+          <label for="currency">Currency</label>
+          <select id="currency" name="currency" aria-label="currency">
+            <option value="USDT">Tether (USDT)</option>
+          </select>
+
+          <label for="amount">Amount</label>
+          <input id="amount" name="amount" placeholder="Enter amount (e.g. 100.00)" aria-label="amount" />
+
+          <div id="limits" class="muted" aria-live="polite" style="margin-top:8px">—</div>
+          <div id="amountError" class="error" role="alert" style="display:none"></div>
+
+          <label for="wallet">Destination wallet / address</label>
+          <input id="wallet" name="wallet" placeholder="e.g. 0x... or TRON address" />
+
+          <div class="actions" style="justify-content:space-between;">
+            <div style="display:flex; gap:10px;">
+              <button type="button" id="validateBtn" title="Validate current amount">Validate</button>
+              <button type="button" class="secondary" id="autoFillNominal" title="Fill nominal value">Auto-fill nominal</button>
+            </div>
+
+            <div style="display:flex; gap:8px; align-items:center;">
+              <span class="kicker">USDT</span>
+              <span class="muted" style="font-size:13px;">Precision: <span class="highlight">2 decimals</span></span>
+            </div>
+          </div>
+        </form>
+
+        <div class="note" id="requirements">
+          <strong style="color:#eaf6ff">Business rules (assumed for this exercise — USDT)</strong>
+          <ul style="margin:8px 0 0 18px; color:var(--muted);">
+            <li>Amounts must be numeric and follow currency precision/step (2 decimals for USDT).</li>
+            <li>Amount must be >= min and <= max (boundaries inclusive).</li>
+            <li>USDT: <strong>min = 1.00</strong>, <strong>max = 10000.00</strong>, step = 0.01.</li>
+          </ul>
+        </div>
+      </section>
+
+      <aside class="card" aria-labelledby="cases-heading">
+        <h2 id="cases-heading" style="margin:0 0 8px 0;">BVA test cases (suggested)</h2>
+        <div class="muted">For USDT: min-1, min, min+1, nominal, max-1, max, max+1 plus invalid formats.</div>
+
+        <table id="casesTable" aria-live="polite">
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>Test value</th>
+              <th style="width:82px">Expectation</th>
+              <th style="width:68px">Result</th>
+              <th style="width:68px">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <!-- Rows populated by JS -->
+          </tbody>
+        </table>
+
+        <div class="actions" style="margin-top:12px; justify-content:flex-start;">
+          <button id="runAll" title="Run all test cases">Run all cases</button>
+          <button class="secondary" id="clearResults" title="Clear result badges">Clear results</button>
+        </div>
+
+        <h3 style="margin-top:12px;color:#eaf6ff">Quick tips</h3>
+        <ul class="muted" style="margin-top:6px">
+          <li>Focus on values just below and above each boundary.</li>
+          <li>Confirm if limits are inclusive: min and max should be accepted.</li>
+          <li>Test precision (too many decimals) and malformed inputs (commas, scientific notation).</li>
+        </ul>
+      </aside>
+    </div>
+
+    <section style="margin-top:18px;" class="card" aria-labelledby="matrix-heading">
+      <h2 id="matrix-heading" style="margin:0 0 8px 0;">Suggested test case matrix (readable)</h2>
+      <p class="muted" style="margin-top:6px">Use this as a checklist for manual or automated tests.</p>
+      <pre>
+Currency | min    | min-1  | min      | min+1  | nominal  | max-1    | max      | max+1
+-------- | ------ | ------ | -------- | ------ | -------- | -------- | -------- | -------
+USDT     | 1.00   | 0.99   | 1.00     | 1.01   | 100.00   | 9999.99  | 10000.00 | 10000.01
+
+Also include: empty value, "abc", "1,000" (commas), negative values (-1.00), extremely large numbers (1e9), and values with too many decimals (e.g. 1.000).
+      </pre>
+    </section>
+  </div>
+
+  <script>
+    // Currency rules for the exercise (only USDT)
+    const currencyRules = {
+      USDT: { min: 1.00, max: 10000.00, step: 0.01, precision: 2 }
+    };
+
+    // Test case definitions (BVA and a few invalids) for USDT
+    function generateCasesFor(currency) {
+      const r = currencyRules[currency];
+      const min = r.min;
+      const max = r.max;
+      const p = r.precision;
+      const smallDelta = r.step;
+      const cases = [
+        { label: 'min-1', value: (min - smallDelta).toFixed(p), expect: 'reject' },
+        { label: 'min', value: Number(min).toFixed(p), expect: 'accept' },
+        { label: 'min+1', value: (min + smallDelta).toFixed(p), expect: 'accept' },
+        { label: 'nominal', value: '100.00', expect: 'accept' },
+        { label: 'max-1', value: (max - smallDelta).toFixed(p), expect: 'accept' },
+        { label: 'max', value: Number(max).toFixed(p), expect: 'accept' },
+        { label: 'max+1', value: (max + smallDelta).toFixed(p), expect: 'reject' },
+        { label: 'empty', value: '', expect: 'reject' },
+        { label: 'non-numeric', value: 'abc', expect: 'reject' },
+        { label: 'comma thousands', value: '1,000', expect: 'reject' },
+        { label: 'negative', value: (-min).toFixed(p), expect: 'reject' },
+        { label: 'too many decimals', value: (min + 1/Math.pow(10,p+1)).toFixed(p+1), expect: 'reject' }
+      ];
+      return cases;
+    }
+
+    // DOM refs
+    const currencyEl = document.getElementById('currency');
+    const amountEl = document.getElementById('amount');
+    const walletEl = document.getElementById('wallet');
+    const limitsEl = document.getElementById('limits');
+    const amountErrorEl = document.getElementById('amountError');
+    const validateBtn = document.getElementById('validateBtn');
+    const autoFillNominal = document.getElementById('autoFillNominal');
+    const casesTableBody = document.querySelector('#casesTable tbody');
+    const runAllBtn = document.getElementById('runAll');
+    const clearResultsBtn = document.getElementById('clearResults');
+
+    function updateLimitsDisplay() {
+      const c = currencyEl.value;
+      const r = currencyRules[c];
+      limitsEl.textContent = `Allowed range: ${r.min.toFixed(r.precision)} — ${r.max.toFixed(r.precision)} (precision: ${r.precision} decimals)`;
+    }
+
+    function parseAmountRaw(raw) {
+      // Strict parse: do not accept commas or scientific notation; allow decimal point only; trim whitespace
+      if (raw === null || raw === undefined) return { valid: false, error: 'empty' };
+      raw = String(raw).trim();
+      if (raw.length === 0) return { valid: false, error: 'empty' };
+      if (/[,eE]/.test(raw)) return { valid: false, error: 'bad-format' };
+      const num = Number(raw);
+      if (!isFinite(num)) return { valid: false, error: 'not-a-number' };
+      return { valid: true, value: num, raw };
+    }
+
+    function validateAmountForCurrency(rawValue, currency) {
+      const r = currencyRules[currency];
+      const parsed = parseAmountRaw(rawValue);
+      if (!parsed.valid) {
+        return { ok: false, reason: parsed.error };
+      }
+      const value = parsed.value;
+      const raw = parsed.raw;
+      const decimalPart = raw.includes('.') ? raw.split('.')[1] : '';
+      if (decimalPart.length > r.precision) {
+        return { ok: false, reason: 'too-many-decimals', detail: `Allowed ${r.precision} decimals` };
+      }
+      if (value < r.min - Number.EPSILON) {
+        return { ok: false, reason: 'too-small', detail: `minimum is ${r.min.toFixed(r.precision)}` };
+      }
+      if (value > r.max + Number.EPSILON) {
+        return { ok: false, reason: 'too-large', detail: `maximum is ${r.max.toFixed(r.precision)}` };
+      }
+      return { ok: true, value };
+    }
+
+    function showAmountError(message) {
+      amountErrorEl.style.display = 'block';
+      amountErrorEl.textContent = message;
+    }
+    function clearAmountError() {
+      amountErrorEl.style.display = 'none';
+      amountErrorEl.textContent = '';
+    }
+
+    function validateAndShow(raw) {
+      const currency = currencyEl.value;
+      const res = validateAmountForCurrency(raw, currency);
+      if (!res.ok) {
+        showAmountError('Amount invalid: ' + (res.detail || res.reason));
+        return { pass: false, details: res };
+      }
+      clearAmountError();
+      return { pass: true, details: res };
+    }
+
+    // Populate test case rows for currently selected currency
+    function populateCases() {
+      const c = currencyEl.value;
+      const cases = generateCasesFor(c);
+      casesTableBody.innerHTML = '';
+      cases.forEach((tc, idx) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${idx+1}</td>
+          <td><code>${tc.value}</code></td>
+          <td>${tc.expect}</td>
+          <td data-result-id="r${idx}">-</td>
+          <td><button type="button" data-idx="${idx}">Run</button></td>
+        `;
+        casesTableBody.appendChild(tr);
+      });
+      casesTableBody.querySelectorAll('button[data-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.dataset.idx);
+          runCaseAtIndex(idx);
+        });
+      });
+    }
+
+    // Run a single case, fill the form, and validate; update result cell
+    function runCaseAtIndex(index) {
+      const c = currencyEl.value;
+      const cases = generateCasesFor(c);
+      const tc = cases[index];
+      amountEl.value = tc.value;
+      walletEl.value = '0x742d35Cc6634C0532925a3b844Bc454e4438f44e'; // sample address
+      const validation = validateAndShow(tc.value);
+      const resultCell = document.querySelector(`[data-result-id="r${index}"]`);
+      const passed = (validation.pass && tc.expect === 'accept') || (!validation.pass && tc.expect === 'reject');
+      resultCell.textContent = passed ? 'PASS' : 'FAIL';
+      resultCell.className = passed ? 'result-pass' : 'result-fail';
+      resultCell.title = validation.pass ? 'Form validation accepted' : JSON.stringify(validation.details);
+    }
+
+    function runAllCases() {
+      const c = currencyEl.value;
+      const cases = generateCasesFor(c);
+      cases.forEach((_, idx) => runCaseAtIndex(idx));
+    }
+
+    // Event listeners
+    currencyEl.addEventListener('change', () => {
+      updateLimitsDisplay();
+      populateCases();
+      clearAmountError();
+    });
+
+    validateBtn.addEventListener('click', () => {
+      validateAndShow(amountEl.value);
+    });
+
+    autoFillNominal.addEventListener('click', () => {
+      amountEl.value = '100.00';
+      walletEl.value = '';
+      clearAmountError();
+    });
+
+    runAllBtn.addEventListener('click', () => {
+      runAllCases();
+    });
+
+    clearResultsBtn.addEventListener('click', () => {
+      casesTableBody.querySelectorAll('td[data-result-id]').forEach(td => {
+        td.textContent = '-';
+        td.className = '';
+      });
+      clearAmountError();
+    });
+
+    // Initialize UI
+    updateLimitsDisplay();
+    populateCases();
+
+    // Keyboard: Enter in amount validates
+    amountEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        validateAndShow(amountEl.value);
+      }
+    });
+
+    // Expose some helper to console for advanced exploration
+    window._exercise = {
+      rules: currencyRules,
+      generateCasesFor,
+      validateAmountForCurrency
+    };
+  </script>
+</body>
+</html>
